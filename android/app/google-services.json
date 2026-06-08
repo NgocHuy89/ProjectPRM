@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "111787998360",
+    "project_id": "roomfinanceapp",
+    "storage_bucket": "roomfinanceapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:111787998360:android:9cca186d402d9fabcea4ed",
+        "android_client_info": {
+          "package_name": "com.example.room_finance_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6KcoUDTnK1q1W6wSScfxYWyuMMSsndWY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

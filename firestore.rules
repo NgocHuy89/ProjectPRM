@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cho phép authenticated users đọc/ghi dữ liệu của chính họ
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Cho phép authenticated users đọc rooms họ tham gia
+    match /rooms/{roomId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/rooms/$(roomId)).data.headId == request.auth.uid;
+      
+      // Members của room
+      match /members/{userId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && get(/databases/$(database)/documents/rooms/$(roomId)).data.headId == request.auth.uid;
+      }
+
+      // Expenses của room
+      match /expenses/{expenseId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      }
+
+      // Payments của room
+      match /payments/{paymentId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+    }
+
+    // Default: từ chối tất cả
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
