@@ -7,6 +7,7 @@ import '../../services/room_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../profile/view_profile_screen.dart';
+import '../room/join_room_screen.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   final UserModel user;
@@ -24,9 +25,18 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final roomId = widget.user.currentRoomId;
+    if (roomId == null || roomId.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.surface,
+        body: _buildBody(null),
+        bottomNavigationBar: _buildBottomNav(),
+      );
+    }
+
     return StreamBuilder<RoomModel?>(
-      key: Key('room_${widget.user.currentRoomId}'),
-      stream: _roomService.roomStream(widget.user.currentRoomId ?? ''),
+      key: Key('room_$roomId'),
+      stream: _roomService.roomStream(roomId),
       builder: (context, roomSnap) {
         if (roomSnap.hasError) {
           return Scaffold(
@@ -79,9 +89,28 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
           padding: const EdgeInsets.all(16),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // My contribution card
-              _buildMyContributionCard(room),
-              const SizedBox(height: 20),
+              if (room == null) ...[
+                const EmptyState(
+                  icon: Icons.home_outlined,
+                  title: 'Chưa tham gia phòng',
+                  subtitle:
+                      'Nhập mã phòng do trưởng phòng cung cấp\nđể bắt đầu quản lý chi tiêu chung.',
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => JoinRoomScreen(user: widget.user),
+                    ),
+                  ),
+                  icon: const Icon(Icons.login),
+                  label: const Text('Tham gia phòng'),
+                ),
+              ] else ...[
+                _buildMyContributionCard(room),
+                const SizedBox(height: 20),
+              ],
 
               // Room info
               if (room != null) ...[
@@ -91,28 +120,29 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                 const SizedBox(height: 20),
               ],
 
-              // Members
-              SectionHeader(
-                title: 'Các thành viên',
-                actionLabel: 'Xem tất cả',
-                onAction: () => setState(() => _selectedIndex = 0),
-              ),
-              const SizedBox(height: 12),
-              if (room != null)
+              if (room != null) ...[
+                SectionHeader(
+                  title: 'Các thành viên',
+                  actionLabel: 'Xem tất cả',
+                  onAction: () => setState(() => _selectedIndex = 0),
+                ),
+                const SizedBox(height: 12),
                 StreamBuilder<List<MemberModel>>(
                   key: Key('members_${room.roomId}'),
                   stream: _roomService.membersStream(room.roomId),
                   builder: (ctx, snap) {
-                    if (snap.hasError) {
-                      return const SizedBox.shrink();
-                    }
+                    if (snap.hasError) return const SizedBox.shrink();
                     final members = snap.data ?? [];
-                    if (members.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
+                    if (members.isEmpty) return const SizedBox.shrink();
                     return _buildMembersRow(members);
                   },
                 ),
+                const SizedBox(height: 8),
+
+                // Nút rời phòng
+                _buildLeaveRoomButton(room),
+              ],
+
               const SizedBox(height: 80),
             ]),
           ),
@@ -175,7 +205,8 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ViewProfileScreen(userId: widget.user.uid),
+                    builder: (_) =>
+                        ViewProfileScreen(userId: widget.user.uid),
                   ),
                 ),
                 child: UserAvatar(
@@ -204,9 +235,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       key: Key('me_${room.roomId}'),
       stream: _roomService.membersStream(room.roomId),
       builder: (ctx, snap) {
-        if (snap.hasError) {
-          return const SizedBox.shrink();
-        }
+        if (snap.hasError) return const SizedBox.shrink();
         final me = snap.data?.firstWhere(
           (m) => m.userId == widget.user.uid,
           orElse: () => MemberModel(
@@ -393,6 +422,70 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     );
   }
 
+  // ── Nút rời phòng ─────────────────────────────
+  Widget _buildLeaveRoomButton(RoomModel room) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: () => _confirmLeaveRoom(room),
+        icon: const Icon(Icons.exit_to_app, color: AppColors.danger, size: 16),
+        label: const Text(
+          'Rời khỏi phòng',
+          style: TextStyle(color: AppColors.danger, fontSize: 13),
+        ),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmLeaveRoom(RoomModel room) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Rời khỏi phòng'),
+        content: Text(
+          'Bạn có chắc muốn rời khỏi "${room.roomName}"?\n'
+          'Hành động này không thể hoàn tác.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huỷ'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Rời phòng',
+              style: TextStyle(color: AppColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _roomService.leaveRoom(
+        roomId: room.roomId,
+        userId: widget.user.uid,
+      );
+      // Không cần navigate thủ công.
+      // AuthGate lắng nghe userStream → tự rebuild khi currentRoomId = null
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: $e'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   // ── Funds Tab ─────────────────────────────────
   Widget _buildFundsTab(RoomModel? room) {
     return Scaffold(
@@ -400,19 +493,23 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         title: const Text('Quỹ chung'),
         automaticallyImplyLeading: false,
       ),
-      body: const Center(
+      body: Center(
         child: EmptyState(
           icon: Icons.savings,
-          title: 'Quỹ chung',
-          subtitle: 'Sẽ được triển khai\nở nhóm Fund & Expense',
+          title: room == null ? 'Chưa tham gia phòng' : 'Quỹ chung',
+          subtitle: room == null
+              ? 'Tham gia phòng để xem và đóng quỹ chung.'
+              : 'Sẽ được triển khai\nở nhóm Fund & Expense',
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
-        icon: const Icon(Icons.add),
-        label: const Text('Đóng tiền quỹ'),
-        backgroundColor: AppColors.primary,
-      ),
+      floatingActionButton: room == null
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () {},
+              icon: const Icon(Icons.add),
+              label: const Text('Đóng tiền quỹ'),
+              backgroundColor: AppColors.primary,
+            ),
     );
   }
 
@@ -423,11 +520,13 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         title: const Text('Chi tiêu chung'),
         automaticallyImplyLeading: false,
       ),
-      body: const Center(
+      body: Center(
         child: EmptyState(
           icon: Icons.receipt_long,
-          title: 'Chi tiêu chung',
-          subtitle: 'Sẽ được triển khai\nở nhóm Fund & Expense',
+          title: room == null ? 'Chưa tham gia phòng' : 'Chi tiêu chung',
+          subtitle: room == null
+              ? 'Tham gia phòng để xem chi tiêu chung.'
+              : 'Sẽ được triển khai\nở nhóm Fund & Expense',
         ),
       ),
     );

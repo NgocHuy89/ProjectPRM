@@ -118,6 +118,7 @@ class RoomService {
 
   // ── Lấy thông tin phòng (stream) ─────────────
   Stream<RoomModel?> roomStream(String roomId) {
+    if (roomId.isEmpty) return Stream.value(null);
     return _db
         .collection('rooms')
         .doc(roomId)
@@ -127,6 +128,7 @@ class RoomService {
 
   // ── Lấy danh sách thành viên (stream) ────────
   Stream<List<MemberModel>> membersStream(String roomId) {
+    if (roomId.isEmpty) return Stream.value([]);
     return _db
         .collection('rooms')
         .doc(roomId)
@@ -154,7 +156,7 @@ class RoomService {
     });
 
     batch.update(_db.collection('users').doc(userId), {
-      'currentRoomId': null,
+      'currentRoomId': FieldValue.delete(), // ✅ xoá field thay vì set null
       'role': 'member',
     });
 
@@ -229,5 +231,34 @@ class RoomService {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final rnd = Random.secure();
     return List.generate(6, (_) => chars[rnd.nextInt(chars.length)]).join();
+  }
+
+  // ── Rời phòng ─────────────────────────────────
+  Future<void> leaveRoom({
+    required String roomId,
+    required String userId,
+  }) async {
+    final batch = _db.batch();
+    final roomRef = _db.collection('rooms').doc(roomId);
+
+    // Đánh dấu member không còn active
+    batch.update(roomRef.collection('members').doc(userId), {
+      'isActive': false,
+      'removedAt': FieldValue.serverTimestamp(),
+    });
+
+    // Xoá userId khỏi danh sách memberIds của phòng
+    batch.update(roomRef, {
+      'memberIds': FieldValue.arrayRemove([userId]),
+    });
+
+    // Xoá currentRoomId trên user doc
+    // ✅ Dùng FieldValue.delete() thay vì null
+    // (Firestore không chấp nhận null trong update(), sẽ throw exception)
+    batch.update(_db.collection('users').doc(userId), {
+      'currentRoomId': FieldValue.delete(),
+    });
+
+    await batch.commit();
   }
 }

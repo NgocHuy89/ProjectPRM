@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../models/user_model.dart';
+import '../dashboard/head_dashboard_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -29,6 +31,29 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // ── HARDCODED ACCOUNT (dev only) ──────────────
+    if (_emailCtrl.text.trim() == 'huynn@gmail.com' &&
+        _passCtrl.text == '123456') {
+      final fakeUser = UserModel(
+        uid: 'dev-uid-001',
+        fullName: 'Huy Nguyen',
+        email: 'huynn@gmail.com',
+        role: 'head',
+        currentRoomId: null,
+        createdAt: DateTime.now(),
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HeadDashboardScreen(user: fakeUser),
+        ),
+      );
+      return;
+    }
+    // ─────────────────────────────────────────────
+
     setState(() => _isLoading = true);
     try {
       await _authService.login(

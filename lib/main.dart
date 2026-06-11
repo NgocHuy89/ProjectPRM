@@ -33,7 +33,8 @@ class RoommateFinanceApp extends StatelessWidget {
 }
 
 // ─── Auth Gate ────────────────────────────────────────────
-// Lắng nghe Firebase Auth, tự động chuyển hướng
+// Lắng nghe Firebase Auth + Firestore user stream,
+// tự động chuyển hướng khi currentRoomId thay đổi
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -52,9 +53,11 @@ class AuthGate extends StatelessWidget {
           return const LoginScreen();
         }
 
-        // Đã đăng nhập → lấy user data từ Firestore
-        return FutureBuilder<UserModel?>(
-          future: UserService().getUser(authSnap.data!.uid),
+        // Đã đăng nhập → lắng nghe user data từ Firestore theo stream
+        // Dùng StreamBuilder thay vì FutureBuilder để tự động rebuild
+        // khi currentRoomId thay đổi sau khi tạo/tham gia phòng
+        return StreamBuilder<UserModel?>(
+          stream: UserService().userStream(authSnap.data!.uid),
           builder: (context, userSnap) {
             if (userSnap.connectionState == ConnectionState.waiting) {
               return const _SplashScreen();
@@ -127,7 +130,6 @@ class _SplashScreen extends StatelessWidget {
     );
   }
 }
-
 
 // ─── No Room Screen ───────────────────────────────────────
 class _NoRoomScreen extends StatelessWidget {
