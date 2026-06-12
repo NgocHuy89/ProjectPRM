@@ -12,12 +12,14 @@ class FundListScreen extends StatelessWidget {
   final UserModel user;
   final String roomId;
   final bool isHead;
+  final bool showAppBar;
 
   const FundListScreen({
     super.key,
     required this.user,
     required this.roomId,
     required this.isHead,
+    this.showAppBar = true,
   });
 
   @override
@@ -25,10 +27,12 @@ class FundListScreen extends StatelessWidget {
     final financeService = FinanceService();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quản lý quỹ'),
-        automaticallyImplyLeading: false,
-      ),
+      appBar: showAppBar
+          ? AppBar(
+              title: const Text('Quản lý quỹ'),
+              automaticallyImplyLeading: false,
+            )
+          : null,
       body: StreamBuilder<List<FundModel>>(
         stream: financeService.fundsStream(roomId),
         builder: (context, snap) {

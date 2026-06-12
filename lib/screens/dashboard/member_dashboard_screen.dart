@@ -6,6 +6,8 @@ import '../../services/auth_service.dart';
 import '../../services/room_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../expense/expense_list_screen.dart';
+import '../fund/fund_list_screen.dart';
 import '../profile/view_profile_screen.dart';
 import '../room/join_room_screen.dart';
 
@@ -488,6 +490,14 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
 
   // ── Funds Tab ─────────────────────────────────
   Widget _buildFundsTab(RoomModel? room) {
+    if (room != null) {
+      return FundListScreen(
+        user: widget.user,
+        roomId: room.roomId,
+        isHead: false,
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quỹ chung'),
@@ -502,19 +512,19 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
               : 'Sẽ được triển khai\nở nhóm Fund & Expense',
         ),
       ),
-      floatingActionButton: room == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () {},
-              icon: const Icon(Icons.add),
-              label: const Text('Đóng tiền quỹ'),
-              backgroundColor: AppColors.primary,
-            ),
     );
   }
 
   // ── Expenses Tab ──────────────────────────────
   Widget _buildExpensesTab(RoomModel? room) {
+    if (room != null) {
+      return ExpenseListScreen(
+        user: widget.user,
+        roomId: room.roomId,
+        isHead: false,
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chi tiêu chung'),

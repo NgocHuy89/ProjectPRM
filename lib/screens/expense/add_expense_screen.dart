@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../models/finance_models.dart';
 import '../../models/room_model.dart';
 import '../../models/user_model.dart';
 import '../../services/finance_service.dart';
@@ -30,10 +31,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   DateTime _expenseDate = DateTime.now();
   String? _paidByUserId;
   String? _paidByUserName;
+  String? _selectedFundId;
   bool _isLoading = false;
   bool _isPersonalNote = false;
 
   List<MemberModel> _members = [];
+  List<FundModel> _funds = [];
 
   final _financeService = FinanceService();
   final _roomService = RoomService();
@@ -52,12 +55,20 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     _paidByUserId = widget.user.uid;
     _paidByUserName = widget.user.fullName;
     _loadMembers();
+    _loadFunds();
   }
 
   Future<void> _loadMembers() async {
     final members = await _roomService.membersStream(widget.roomId).first;
     if (mounted) {
       setState(() => _members = members);
+    }
+  }
+
+  Future<void> _loadFunds() async {
+    final funds = await _financeService.fundsStream(widget.roomId).first;
+    if (mounted) {
+      setState(() => _funds = funds.where((f) => f.isActive).toList());
     }
   }
 
@@ -105,6 +116,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         totalAmount: amount,
         paidBy: _paidByUserId!,
         paidByName: _paidByUserName!,
+        fundId: _selectedFundId,
         note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
         expenseDate: _expenseDate,
         createdBy: widget.user.uid,
@@ -137,6 +149,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedPayerId = _members.any((m) => m.userId == _paidByUserId)
+        ? _paidByUserId
+        : null;
+
     return LoadingOverlay(
       isLoading: _isLoading,
       child: Scaffold(
@@ -268,7 +284,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      initialValue: _paidByUserId,
+                      initialValue: selectedPayerId,
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
@@ -285,6 +301,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           child: Text(m.fullName),
                         );
                       }).toList(),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Vui lòng chọn người trả';
+                        }
+                        return null;
+                      },
                       onChanged: (val) {
                         if (val != null) {
                           final m = _members.firstWhere(
@@ -300,7 +322,57 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
- 
+
+                // Quỹ chi trả
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Chi từ quỹ (tuỳ chọn)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedFundId ?? '',
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.divider),
+                        ),
+                        prefixIcon: const Icon(Icons.savings_outlined),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: '',
+                          child: Text('Không trừ quỹ'),
+                        ),
+                        ..._funds.map((fund) {
+                          return DropdownMenuItem<String>(
+                            value: fund.fundId,
+                            child: Text(
+                              '${fund.name} - ${formatVND(fund.currentBalance)}',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedFundId =
+                              val == null || val.isEmpty ? null : val;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
                 // Ngày chi tiêu
                 GestureDetector(
                   onTap: _pickDate,

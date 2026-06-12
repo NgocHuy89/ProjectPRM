@@ -9,6 +9,10 @@ import '../../services/auth_service.dart';
 import '../../services/room_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../expense/add_expense_screen.dart';
+import '../expense/expense_list_screen.dart';
+import '../fund/create_fund_screen.dart';
+import '../fund/fund_list_screen.dart';
 import '../profile/view_profile_screen.dart';
 
 class HeadDashboardScreen extends StatefulWidget {
@@ -368,13 +372,41 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
         label: 'Thêm chi tiêu',
         icon: Icons.add_shopping_cart,
         color: AppColors.danger,
-        onTap: () => _showComingSoon('Thêm chi tiêu'),
+        onTap: () {
+          if (room == null || _useDevData) {
+            _showComingSoon('Thêm chi tiêu');
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AddExpenseScreen(
+                roomId: room.roomId,
+                user: widget.user,
+              ),
+            ),
+          );
+        },
       ),
       _QuickAction(
-        label: 'Đóng quỹ',
+        label: 'Tạo quỹ',
         icon: Icons.savings,
         color: AppColors.secondary,
-        onTap: () => _showComingSoon('Đóng quỹ'),
+        onTap: () {
+          if (room == null || _useDevData) {
+            _showComingSoon('Tạo quỹ');
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CreateFundScreen(
+                roomId: room.roomId,
+                createdBy: widget.user.uid,
+              ),
+            ),
+          );
+        },
       ),
       _QuickAction(
         label: 'Thêm thành viên',
@@ -615,6 +647,40 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
 
   // ── Funds Tab ─────────────────────────────────
   Widget _buildFundsTab(RoomModel? room) {
+    if (!_useDevData && room != null) {
+      return DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Quỹ & Chi tiêu'),
+            automaticallyImplyLeading: false,
+            bottom: const TabBar(
+              tabs: [
+                Tab(icon: Icon(Icons.savings_outlined), text: 'Quỹ chung'),
+                Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Chi tiêu'),
+              ],
+            ),
+          ),
+          body: TabBarView(
+            children: [
+              FundListScreen(
+                user: widget.user,
+                roomId: room.roomId,
+                isHead: true,
+                showAppBar: false,
+              ),
+              ExpenseListScreen(
+                user: widget.user,
+                roomId: room.roomId,
+                isHead: true,
+                showAppBar: false,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quản lý quỹ & Chi tiêu'),
@@ -645,8 +711,7 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
               child: EmptyState(
                 icon: Icons.savings,
                 title: 'Quản lý quỹ',
-                subtitle:
-                    'Màn hình này sẽ được\ntriển khai ở nhóm Fund & Expense',
+                subtitle: 'Tạo phòng trước khi quản lý quỹ và chi tiêu.',
               ),
             ),
       floatingActionButton: _useDevData

@@ -247,6 +247,13 @@ class FinanceService {
     final batch = _db.batch();
     batch.set(ref, expense.toFirestore());
 
+    if (fundId != null && fundId.isNotEmpty) {
+      batch.update(
+        _db.collection('rooms').doc(roomId).collection('funds').doc(fundId),
+        {'currentBalance': FieldValue.increment(-totalAmount)},
+      );
+    }
+
     // Cập nhật totalOwed cho tất cả member (trừ người trả)
     if (splitType == 'equal' && memberIds.isNotEmpty) {
       final perPerson = totalAmount / memberIds.length;

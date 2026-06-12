@@ -12,12 +12,14 @@ class ExpenseListScreen extends StatefulWidget {
   final UserModel user;
   final String roomId;
   final bool isHead;
+  final bool showAppBar;
 
   const ExpenseListScreen({
     super.key,
     required this.user,
     required this.roomId,
     required this.isHead,
+    this.showAppBar = true,
   });
 
   @override
@@ -41,10 +43,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     final financeService = FinanceService();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chi tiêu chung'),
-        automaticallyImplyLeading: false,
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: const Text('Chi tiêu chung'),
+              automaticallyImplyLeading: false,
+            )
+          : null,
       body: Column(
         children: [
           // Category filter chips
