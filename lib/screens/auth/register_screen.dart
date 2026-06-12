@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/validators.dart';
 import '../../widgets/common_widgets.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -39,7 +40,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text,
       );
-      // AuthGate sẽ tự chuyển hướng
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tạo tài khoản thành công. Vui lòng đăng nhập.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context);
     } catch (e) {
       debugPrint('Register error: $e');
       if (!mounted) return;
@@ -148,15 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   prefixIcon: const Icon(Icons.email_outlined),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Vui lòng nhập email';
-                    }
-                    if (!RegExp(r'^[\w-.]+@[\w-]+\.\w+$').hasMatch(v.trim())) {
-                      return 'Email không hợp lệ';
-                    }
-                    return null;
-                  },
+                  validator: AppValidators.email,
                 ),
                 const SizedBox(height: 16),
 

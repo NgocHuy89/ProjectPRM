@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/validators.dart';
 import '../../widgets/common_widgets.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -30,10 +32,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       await _authService.sendPasswordResetEmail(_emailCtrl.text.trim());
       if (mounted) setState(() => _sent = true);
     } catch (e) {
+      debugPrint('Reset password error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Không tìm thấy tài khoản với email này'),
+          content: Text(_friendlyResetError(e)),
           backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
@@ -41,6 +44,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String _friendlyResetError(Object error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-email':
+          return 'Email không hợp lệ';
+        case 'user-not-found':
+          return 'Không tìm thấy tài khoản với email này';
+        case 'too-many-requests':
+          return 'Bạn đã thử quá nhiều lần. Vui lòng thử lại sau';
+        case 'network-request-failed':
+          return 'Không có kết nối mạng. Vui lòng thử lại';
+        case 'missing-android-pkg-name':
+        case 'missing-continue-uri':
+        case 'unauthorized-continue-uri':
+        case 'invalid-continue-uri':
+          return 'Cấu hình gửi email đặt lại mật khẩu chưa hợp lệ';
+      }
+    }
+    return 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại';
   }
 
   @override
@@ -107,13 +131,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _sendReset(),
             prefixIcon: const Icon(Icons.email_outlined),
-            validator: (v) {
-              if (v == null || v.trim().isEmpty) {
-                return 'Vui lòng nhập email';
-              }
-              if (!v.contains('@')) return 'Email không hợp lệ';
-              return null;
-            },
+            validator: AppValidators.email,
           ),
           const SizedBox(height: 28),
           ElevatedButton(

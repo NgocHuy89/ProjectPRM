@@ -1,37 +1,84 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cho phép authenticated users đọc/ghi dữ liệu của chính họ
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+    function isRoomHead(roomId) {
+      return request.auth != null
+        && get(/databases/$(database)/documents/rooms/$(roomId)).data.headId == request.auth.uid;
     }
 
-    // Cho phép authenticated users đọc rooms họ tham gia
+    function canRoomHeadDetachUser(roomId) {
+      return isRoomHead(roomId)
+        && resource.data.currentRoomId == roomId
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['currentRoomId', 'role']);
+    }
+
+    function onlyRoomMemberIdsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['memberIds']);
+    }
+
+    function canJoinRoom() {
+      return request.auth != null
+        && onlyRoomMemberIdsChanged()
+        && !resource.data.memberIds.hasAll([request.auth.uid])
+        && request.resource.data.memberIds.hasAll([request.auth.uid])
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1;
+    }
+
+    function canLeaveRoom() {
+      return request.auth != null
+        && onlyRoomMemberIdsChanged()
+        && resource.data.memberIds.hasAll([request.auth.uid])
+        && !request.resource.data.memberIds.hasAll([request.auth.uid])
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1;
+    }
+
+    // Users can manage their own profile. A room head can detach a member
+    // from that same room when removing them from the room.
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+      allow update: if canRoomHeadDetachUser(resource.data.currentRoomId);
+    }
+
     match /rooms/{roomId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && get(/databases/$(database)/documents/rooms/$(roomId)).data.headId == request.auth.uid;
-      
-      // Members của room
+      allow create: if request.auth != null
+        && request.resource.data.headId == request.auth.uid;
+      allow update: if isRoomHead(roomId) || canJoinRoom() || canLeaveRoom();
+      allow delete: if isRoomHead(roomId);
+
       match /members/{userId} {
         allow read: if request.auth != null;
-        allow write: if request.auth != null && get(/databases/$(database)/documents/rooms/$(roomId)).data.headId == request.auth.uid;
+        allow create: if request.auth != null
+          && (
+            isRoomHead(roomId)
+            || request.auth.uid == userId
+            || getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.headId == request.auth.uid
+          );
+        allow update: if isRoomHead(roomId)
+          || (
+            request.auth != null
+            && request.auth.uid == userId
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['isActive', 'removedAt'])
+          );
+        allow delete: if isRoomHead(roomId);
       }
 
-      // Expenses của room
       match /expenses/{expenseId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null;
-        allow update, delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+        allow update, delete: if request.auth != null
+          && request.auth.uid == resource.data.createdBy;
       }
 
-      // Payments của room
       match /payments/{paymentId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null;
       }
     }
 
-    // Default: từ chối tất cả
     match /{document=**} {
       allow read, write: if false;
     }

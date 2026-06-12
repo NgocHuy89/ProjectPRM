@@ -1318,10 +1318,32 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
         _showComingSoon('Xoá thành viên');
         return;
       }
-      await RoomService().removeMember(
-        roomId: room.roomId,
-        userId: member.userId,
-      );
+      try {
+        await _roomService.removeMember(
+          roomId: room.roomId,
+          userId: member.userId,
+        );
+        if (!mounted) return;
+        setState(() {
+          _dashboardStatsFuture = _getRoomStats();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã xoá ${member.fullName} khỏi phòng'),
+            backgroundColor: AppColors.secondary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể xoá thành viên: $e'),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 

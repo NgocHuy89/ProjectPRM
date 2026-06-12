@@ -46,6 +46,7 @@ class AuthService {
         rethrow;
       }
 
+      await _auth.signOut();
       return user;
     } catch (e) {
       debugPrint('❌ Lỗi đăng ký: $e');
@@ -74,7 +75,8 @@ class AuthService {
 
   // ── Quên mật khẩu ────────────────────────────
   Future<void> sendPasswordResetEmail(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
+    await _auth.setLanguageCode('vi');
+    await _auth.sendPasswordResetEmail(email: email.trim());
   }
 
   // ── Lấy user hiện tại từ Firestore ───────────

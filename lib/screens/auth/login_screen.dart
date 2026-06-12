@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/validators.dart';
 import '../../widgets/common_widgets.dart';
 import '../../models/user_model.dart';
 import '../dashboard/head_dashboard_screen.dart';
@@ -187,13 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           prefixIcon: const Icon(Icons.email_outlined),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return 'Vui lòng nhập email';
-                            }
-                            if (!v.contains('@')) return 'Email không hợp lệ';
-                            return null;
-                          },
+                          validator: AppValidators.email,
                         ),
                         const SizedBox(height: 16),
 
