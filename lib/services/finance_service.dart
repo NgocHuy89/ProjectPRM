@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/finance_models.dart';
+import 'notification_service.dart';
 
 class FinanceService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
+
+  FinanceService({FirebaseFirestore? db}) : _db = db ?? FirebaseFirestore.instance;
 
   // ════════════════════════════════════════
   // FUND
@@ -50,6 +53,22 @@ class FinanceService {
     );
 
     await ref.set(fund.toFirestore());
+
+    // Send notifications to all members except creator
+    final notifService = NotificationService(db: _db);
+    for (final id in memberIds) {
+      if (id != createdBy) {
+        notifService.sendNotification(
+          userId: id,
+          title: 'Quỹ mới được tạo',
+          body: 'Quỹ "$name" vừa được tạo. Vui lòng đóng quỹ.',
+          type: 'fund',
+          referenceId: ref.id,
+          roomId: roomId,
+        );
+      }
+    }
+
     return fund;
   }
 
@@ -222,8 +241,10 @@ class FinanceService {
         .collection('expenses')
         .doc();
 
-    // Khởi tạo settledStatus: paidBy đã settled
-    final settledStatus = {for (final id in memberIds) id: id == paidBy};
+    final bool isFromFund = fundId != null && fundId.isNotEmpty;
+
+    // Khởi tạo settledStatus: nếu chi từ quỹ thì tất cả coi như đã thanh toán
+    final settledStatus = {for (final id in memberIds) id: isFromFund ? true : id == paidBy};
 
     final expense = ExpenseModel(
       expenseId: ref.id,
@@ -247,7 +268,7 @@ class FinanceService {
     final batch = _db.batch();
     batch.set(ref, expense.toFirestore());
 
-    if (fundId != null && fundId.isNotEmpty) {
+    if (isFromFund) {
       batch.update(
         _db.collection('rooms').doc(roomId).collection('funds').doc(fundId),
         {'currentBalance': FieldValue.increment(-totalAmount)},
@@ -255,7 +276,8 @@ class FinanceService {
     }
 
     // Cập nhật totalOwed cho tất cả member (trừ người trả)
-    if (splitType == 'equal' && memberIds.isNotEmpty) {
+    // FIX BUG: Nếu chi từ quỹ thì không tính nợ cá nhân nữa
+    if (!isFromFund && splitType == 'equal' && memberIds.isNotEmpty) {
       final perPerson = totalAmount / memberIds.length;
       for (final uid in memberIds) {
         if (uid != paidBy) {
@@ -272,6 +294,22 @@ class FinanceService {
     }
 
     await batch.commit();
+
+    // Send notifications to all members except creator
+    final notifService = NotificationService(db: _db);
+    for (final id in memberIds) {
+      if (id != createdBy) {
+        notifService.sendNotification(
+          userId: id,
+          title: 'Khoản chi mới',
+          body: '$paidByName vừa thêm khoản chi: $title',
+          type: 'expense',
+          referenceId: ref.id,
+          roomId: roomId,
+        );
+      }
+    }
+
     return expense;
   }
 

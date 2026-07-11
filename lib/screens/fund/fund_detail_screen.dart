@@ -7,6 +7,7 @@ import '../../services/finance_service.dart';
 import '../../services/room_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../services/notification_service.dart';
 import 'contribute_screen.dart';
 import 'contribution_history_screen.dart';
 
@@ -196,6 +197,23 @@ class FundDetailScreen extends StatelessWidget {
                             return _MemberStatusTile(
                               member: m,
                               status: status,
+                              isHead: isHead,
+                              onRemind: () async {
+                                final notifService = NotificationService();
+                                await notifService.sendNotification(
+                                  userId: m.userId,
+                                  title: 'Nhắc nhở đóng quỹ',
+                                  body: 'Trưởng phòng nhắc bạn đóng quỹ "${currentFund.name}".',
+                                  type: 'fund_reminder',
+                                  referenceId: currentFund.fundId,
+                                  roomId: roomId,
+                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Đã gửi nhắc nhở tới ${m.fullName}')),
+                                  );
+                                }
+                              },
                             );
                           }).toList(),
                         );
@@ -336,8 +354,15 @@ class _ProgressCard extends StatelessWidget {
 class _MemberStatusTile extends StatelessWidget {
   final MemberModel member;
   final String status;
+  final bool isHead;
+  final VoidCallback? onRemind;
 
-  const _MemberStatusTile({required this.member, required this.status});
+  const _MemberStatusTile({
+    required this.member, 
+    required this.status,
+    this.isHead = false,
+    this.onRemind,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -361,33 +386,48 @@ class _MemberStatusTile extends StatelessWidget {
                 style: TextStyle(fontSize: 11, color: AppColors.primary),
               )
             : null,
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: isPaid
-                ? AppColors.secondary.withValues(alpha: 0.12)
-                : AppColors.warning.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isPaid ? Icons.check_circle : Icons.pending,
-                size: 14,
-                color: isPaid ? AppColors.secondary : AppColors.warning,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isHead && !isPaid)
+              IconButton(
+                icon: const Icon(Icons.notifications_active_outlined),
+                color: AppColors.primary,
+                tooltip: 'Gửi nhắc nhở',
+                onPressed: onRemind,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-              const SizedBox(width: 4),
-              Text(
-                isPaid ? 'Đã đóng' : 'Chưa đóng',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isPaid ? AppColors.secondary : AppColors.warning,
-                ),
+            if (isHead && !isPaid) const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isPaid
+                    ? AppColors.secondary.withValues(alpha: 0.12)
+                    : AppColors.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isPaid ? Icons.check_circle : Icons.pending,
+                    size: 14,
+                    color: isPaid ? AppColors.secondary : AppColors.warning,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isPaid ? 'Đã đóng' : 'Chưa đóng',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isPaid ? AppColors.secondary : AppColors.warning,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

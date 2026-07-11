@@ -14,6 +14,8 @@ import '../expense/expense_list_screen.dart';
 import '../fund/create_fund_screen.dart';
 import '../fund/fund_list_screen.dart';
 import '../profile/view_profile_screen.dart';
+import '../../services/notification_service.dart';
+import 'notifications_screen.dart';
 
 class HeadDashboardScreen extends StatefulWidget {
   final UserModel user;
@@ -248,6 +250,57 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
       expandedHeight: 200,
       pinned: true,
       backgroundColor: AppColors.primaryDark,
+      actions: [
+        StreamBuilder<int>(
+          stream: NotificationService().getUnreadCountStream(widget.user.uid),
+          builder: (context, snapshot) {
+            final unreadCount = snapshot.data ?? 0;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_none, color: Colors.white),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NotificationsScreen(userId: widget.user.uid),
+                      ),
+                    );
+                  },
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : '$unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        if (room != null)
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            tooltip: 'Chia sẻ mã phòng',
+            onPressed: () => _showJoinCode(room.joinCode),
+          ),
+        const SizedBox(width: 8),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: const BoxDecoration(
@@ -332,14 +385,6 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
           ),
         ),
       ),
-      actions: [
-        if (room != null)
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
-            tooltip: 'Chia sẻ mã phòng',
-            onPressed: () => _showJoinCode(room.joinCode),
-          ),
-      ],
     );
   }
 
