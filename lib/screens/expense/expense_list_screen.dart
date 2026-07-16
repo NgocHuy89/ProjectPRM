@@ -101,9 +101,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                   return EmptyState(
                     icon: Icons.receipt_long_outlined,
                     title: 'Chưa có chi tiêu nào',
-                    subtitle: widget.isHead
-                        ? 'Ấn nút + để thêm khoản chi'
-                        : 'Trưởng phòng chưa ghi chi tiêu',
+                    subtitle: 'Ấn nút + để thêm khoản chi',
                   );
                 }
 
@@ -181,8 +179,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           ),
         ],
       ),
-      floatingActionButton: widget.isHead
-          ? FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.extended(
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -195,8 +192,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Thêm chi tiêu'),
               backgroundColor: AppColors.danger,
-            )
-          : null,
+            ),
     );
   }
 }

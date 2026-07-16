@@ -615,8 +615,21 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
             ? PopupMenuButton<String>(
                 onSelected: (val) {
                   if (val == 'remove') _confirmRemoveMember(member, room);
+                  if (val == 'transfer_head') {
+                    _confirmTransferHead(member, room);
+                  }
                 },
                 itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'transfer_head',
+                    child: Row(
+                      children: [
+                        Icon(Icons.admin_panel_settings_outlined, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text('Nhường chức', style: TextStyle(color: Colors.green)),
+                      ],
+                    ),
+                  ),
                   const PopupMenuItem(
                     value: 'edit',
                     child: Row(
@@ -1118,6 +1131,59 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _confirmTransferHead(MemberModel member, RoomModel room) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Nhường chức trưởng phòng'),
+        content: Text(
+          'Bạn có chắc muốn nhường chức trưởng phòng cho ${member.fullName} không?\n'
+          'Sau khi nhường chức, bạn sẽ trở thành thành viên bình thường.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huỷ'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Nhường chức',
+              style: TextStyle(color: AppColors.secondary),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _roomService.transferHeadRole(
+        roomId: room.roomId,
+        currentHeadId: widget.user.uid,
+        newHeadId: member.userId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã nhường chức trưởng phòng cho ${member.fullName}'),
+          backgroundColor: AppColors.secondary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể nhường chức: $e'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

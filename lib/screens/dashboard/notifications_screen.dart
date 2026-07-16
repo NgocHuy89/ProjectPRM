@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../models/notification_model.dart';
+import '../../models/finance_models.dart';
+import '../../models/user_model.dart';
 import '../../services/notification_service.dart';
 import '../../services/finance_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/app_theme.dart';
+import '../fund/fund_detail_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   final String userId;
@@ -29,7 +32,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _notificationService.markAllAsRead(widget.userId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã đánh dấu tất cả là đã đọc')),
+        const SnackBar(content: Text('?? ??nh d?u t?t c? l? ?? ??c')),
       );
     }
   }
@@ -38,7 +41,53 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (!notif.isRead) {
       await _notificationService.markAsRead(widget.userId, notif.id);
     }
-    // TODO: Navigation to specific screen based on notif.type and notif.referenceId if needed
+    if (notif.type == 'fund_reminder') {
+      await _openFundReminder(notif);
+    }
+  }
+
+  Future<void> _openFundReminder(NotificationModel notif) async {
+    if (notif.roomId == null || notif.referenceId == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
+      final fundDoc = await FirebaseFirestore.instance
+          .collection('rooms')
+          .doc(notif.roomId)
+          .collection('funds')
+          .doc(notif.referenceId)
+          .get();
+
+      if (!mounted) return;
+      if (!userDoc.exists || !fundDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kh?ng t?m th?y qu? c?n ??ng.')),
+        );
+        return;
+      }
+
+      final user = UserModel.fromFirestore(userDoc);
+      final fund = FundModel.fromFirestore(fundDoc);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FundDetailScreen(
+            fund: fund,
+            roomId: notif.roomId!,
+            user: user,
+            isHead: user.isHead,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kh?ng th? m? qu?: $e')),
+      );
+    }
   }
 
   Future<DocumentSnapshot?> _checkContributionExists(String referenceId) async {
@@ -60,11 +109,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return null;
   }
 
+  Future<void> _markContributionHandled(
+    NotificationModel notif, {
+    required String newType,
+  }) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .collection('notifications')
+        .doc(notif.id)
+        .update({
+          'type': newType,
+          'isRead': true,
+        });
+  }
+
   void _handleApprove(NotificationModel notif) async {
     if (notif.referenceId == null) return;
     final parts = notif.referenceId!.split('|');
     if (parts.length != 3) return;
-    
+
     try {
       final financeService = FinanceService();
       await financeService.approveContribution(
@@ -73,31 +137,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         contributionId: parts[2],
         headId: widget.userId,
       );
-      
-      // Đổi type để ẩn nút
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection('notifications')
-          .doc(notif.id)
-          .update({'type': 'contribution_request_handled'});
-          
+
+      await _markContributionHandled(
+        notif,
+        newType: 'contribution_request_approved',
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xác nhận khoản đóng quỹ')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('?? x?c nh?n kho?n ??ng qu?')),
+        );
       }
     } catch (e) {
-      if (e.toString().contains('bị người dùng huỷ')) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.userId)
-            .collection('notifications')
-            .doc(notif.id)
-            .update({'type': 'contribution_request_canceled'});
+      if (e.toString().contains('b? ng??i d?ng hu?')) {
+        await _markContributionHandled(
+          notif,
+          newType: 'contribution_request_canceled',
+        );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yêu cầu này đã bị người dùng huỷ trước đó.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Y?u c?u n?y ?? b? ng??i d?ng hu? tr??c ??.'),
+            ),
+          );
         }
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('L?i: $e')),
+          );
+        }
       }
     }
   }
@@ -106,7 +175,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (notif.referenceId == null) return;
     final parts = notif.referenceId!.split('|');
     if (parts.length != 3) return;
-    
+
     try {
       final financeService = FinanceService();
       await financeService.rejectContribution(
@@ -115,31 +184,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         contributionId: parts[2],
         headId: widget.userId,
       );
-      
-      // Đổi type để ẩn nút
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection('notifications')
-          .doc(notif.id)
-          .update({'type': 'contribution_request_handled'});
-          
+
+      await _markContributionHandled(
+        notif,
+        newType: 'contribution_request_rejected',
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã từ chối khoản đóng quỹ')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('?? t? ch?i kho?n ??ng qu?')),
+        );
       }
     } catch (e) {
-      if (e.toString().contains('bị người dùng huỷ')) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.userId)
-            .collection('notifications')
-            .doc(notif.id)
-            .update({'type': 'contribution_request_canceled'});
+      if (e.toString().contains('b? ng??i d?ng hu?')) {
+        await _markContributionHandled(
+          notif,
+          newType: 'contribution_request_canceled',
+        );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yêu cầu này đã bị người dùng huỷ trước đó.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Y?u c?u n?y ?? b? ng??i d?ng hu? tr??c ??.'),
+            ),
+          );
         }
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('L?i: $e')),
+          );
+        }
       }
     }
   }
@@ -152,6 +226,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.warning_amber_rounded;
       case 'fund':
         return Icons.savings;
+      case 'contribution_request':
+        return Icons.payments_outlined;
+      case 'contribution_request_approved':
+        return Icons.check_circle_outline;
+      case 'contribution_request_rejected':
+        return Icons.cancel_outlined;
       case 'contribution_request_canceled':
         return Icons.cancel;
       default:
@@ -167,6 +247,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return AppColors.danger;
       case 'fund':
         return AppColors.secondary;
+      case 'contribution_request':
+        return AppColors.primary;
+      case 'contribution_request_approved':
+        return AppColors.secondary;
+      case 'contribution_request_rejected':
+        return AppColors.danger;
       case 'contribution_request_canceled':
         return Colors.grey;
       default:
@@ -174,15 +260,55 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  Widget? _buildContributionStatus(String type) {
+    switch (type) {
+      case 'contribution_request_approved':
+        return _statusChip('?? x?c nh?n', AppColors.secondary);
+      case 'contribution_request_rejected':
+        return _statusChip('?? t? ch?i', AppColors.danger);
+      case 'contribution_request_canceled':
+        return _statusChip(
+          'Y?u c?u ?? b? ng??i d?ng hu?.',
+          AppColors.danger,
+          italic: true,
+        );
+      default:
+        return null;
+    }
+  }
+
+  Widget _statusChip(String label, Color color, {bool italic = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thông báo'),
+        title: const Text('Th?ng b?o'),
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all),
-            tooltip: 'Đánh dấu tất cả đã đọc',
+            tooltip: '??nh d?u t?t c? ?? ??c',
             onPressed: _markAllAsRead,
           ),
         ],
@@ -208,7 +334,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Bạn chưa có thông báo nào',
+                    'B?n ch?a c? th?ng b?o n?o',
                     style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                 ],
@@ -223,7 +349,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               final notif = notifications[index];
               final isRead = notif.isRead;
               final iconColor = _getColorForType(notif.type);
-              
+              final statusWidget = _buildContributionStatus(notif.type);
+
               return Material(
                 color: isRead ? Colors.transparent : Colors.blue.withOpacity(0.05),
                 child: InkWell(
@@ -275,23 +402,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   fontSize: 12,
                                 ),
                               ),
-                              if (notif.type == 'contribution_request_canceled') ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Yêu cầu đã bị người dùng huỷ.',
-                                  style: TextStyle(
-                                    color: AppColors.danger.withOpacity(0.8),
-                                    fontStyle: FontStyle.italic,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                              if (notif.type == 'contribution_request' && notif.referenceId != null) ...[
+                              if (statusWidget != null) statusWidget,
+                              if (notif.type == 'contribution_request' &&
+                                  notif.referenceId != null) ...[
                                 const SizedBox(height: 8),
                                 FutureBuilder<DocumentSnapshot?>(
                                   future: _checkContributionExists(notif.referenceId!),
                                   builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
                                       return const Align(
                                         alignment: Alignment.centerLeft,
                                         child: SizedBox(
@@ -304,21 +423,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                                     final doc = snapshot.data;
                                     if (doc == null || !doc.exists) {
-                                      // Yêu cầu không còn tồn tại -> cập nhật type của thông báo
                                       FirebaseFirestore.instance
                                           .collection('users')
                                           .doc(widget.userId)
                                           .collection('notifications')
                                           .doc(notif.id)
-                                          .update({'type': 'contribution_request_canceled'}).catchError((_) {});
+                                          .update({
+                                            'type': 'contribution_request_canceled',
+                                          })
+                                          .catchError((_) {});
 
-                                      return Text(
-                                        'Yêu cầu đã bị người dùng huỷ.',
-                                        style: TextStyle(
-                                          color: AppColors.danger.withOpacity(0.8),
-                                          fontStyle: FontStyle.italic,
-                                          fontSize: 13,
-                                        ),
+                                      return _statusChip(
+                                        'Y?u c?u ?? b? ng??i d?ng hu?.',
+                                        AppColors.danger,
+                                        italic: true,
                                       );
                                     }
 
@@ -331,7 +449,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             visualDensity: VisualDensity.compact,
                                             minimumSize: Size.zero,
                                           ),
-                                          child: const Text('Xác nhận'),
+                                          child: const Text('X?c nh?n'),
                                         ),
                                         const SizedBox(width: 8),
                                         TextButton(
@@ -340,7 +458,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             foregroundColor: AppColors.danger,
                                             visualDensity: VisualDensity.compact,
                                           ),
-                                          child: const Text('Từ chối'),
+                                          child: const Text('T? ch?i'),
                                         ),
                                       ],
                                     );

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../models/user_model.dart';
 import '../../models/room_model.dart';
 import '../../services/auth_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/room_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
@@ -12,6 +13,7 @@ import '../expense/personal_expense_screen.dart';
 import '../fund/fund_list_screen.dart';
 import '../profile/view_profile_screen.dart';
 import '../room/join_room_screen.dart';
+import 'notifications_screen.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   final UserModel user;
@@ -226,6 +228,48 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         ),
       ),
       actions: [
+        StreamBuilder<int>(
+          stream: NotificationService().getUnreadCountStream(widget.user.uid),
+          builder: (context, snapshot) {
+            final unreadCount = snapshot.data ?? 0;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_none, color: Colors.white70),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NotificationsScreen(userId: widget.user.uid),
+                      ),
+                    );
+                  },
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : '$unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
         if (room != null)
           IconButton(
             icon: const Icon(Icons.share, color: Colors.white70),

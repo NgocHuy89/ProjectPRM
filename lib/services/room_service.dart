@@ -252,6 +252,34 @@ class RoomService {
   }
 
   // ── Thống kê nhanh cho Dashboard ─────────────
+  // Chuyển quyền trưởng phòng cho một thành viên khác.
+  Future<void> transferHeadRole({
+    required String roomId,
+    required String currentHeadId,
+    required String newHeadId,
+  }) async {
+    if (currentHeadId == newHeadId) return;
+
+    final roomRef = _db.collection('rooms').doc(roomId);
+    final batch = _db.batch();
+
+    batch.update(roomRef, {'headId': newHeadId});
+    batch.update(roomRef.collection('members').doc(currentHeadId), {
+      'role': 'member',
+    });
+    batch.update(roomRef.collection('members').doc(newHeadId), {
+      'role': 'head',
+    });
+    batch.update(_db.collection('users').doc(currentHeadId), {
+      'role': 'member',
+    });
+    batch.update(_db.collection('users').doc(newHeadId), {
+      'role': 'head',
+    });
+
+    await batch.commit();
+  }
+
   Future<Map<String, dynamic>> getDashboardStats(String roomId) async {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
