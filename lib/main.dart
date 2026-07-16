@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'services/auth_service.dart';
 import 'services/user_service.dart';
 import 'models/user_model.dart';
@@ -15,6 +16,7 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await initializeDateFormatting('vi', null);
   runApp(const RoommateFinanceApp());
 }
 
@@ -59,7 +61,8 @@ class AuthGate extends StatelessWidget {
         return StreamBuilder<UserModel?>(
           stream: UserService().userStream(authSnap.data!.uid),
           builder: (context, userSnap) {
-            if (userSnap.connectionState == ConnectionState.waiting) {
+            if (userSnap.connectionState == ConnectionState.waiting &&
+                !userSnap.hasData) {
               return const _SplashScreen();
             }
             final user = userSnap.data;

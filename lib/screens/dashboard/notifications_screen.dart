@@ -3,6 +3,8 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../../models/notification_model.dart';
 import '../../services/notification_service.dart';
+import '../../services/finance_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/app_theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -39,6 +41,109 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // TODO: Navigation to specific screen based on notif.type and notif.referenceId if needed
   }
 
+  Future<DocumentSnapshot?> _checkContributionExists(String referenceId) async {
+    final parts = referenceId.split('|');
+    if (parts.length == 3) {
+      try {
+        return await FirebaseFirestore.instance
+            .collection('rooms')
+            .doc(parts[0])
+            .collection('funds')
+            .doc(parts[1])
+            .collection('contributions')
+            .doc(parts[2])
+            .get();
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  void _handleApprove(NotificationModel notif) async {
+    if (notif.referenceId == null) return;
+    final parts = notif.referenceId!.split('|');
+    if (parts.length != 3) return;
+    
+    try {
+      final financeService = FinanceService();
+      await financeService.approveContribution(
+        roomId: parts[0],
+        fundId: parts[1],
+        contributionId: parts[2],
+        headId: widget.userId,
+      );
+      
+      // Đổi type để ẩn nút
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('notifications')
+          .doc(notif.id)
+          .update({'type': 'contribution_request_handled'});
+          
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xác nhận khoản đóng quỹ')));
+      }
+    } catch (e) {
+      if (e.toString().contains('bị người dùng huỷ')) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.userId)
+            .collection('notifications')
+            .doc(notif.id)
+            .update({'type': 'contribution_request_canceled'});
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yêu cầu này đã bị người dùng huỷ trước đó.')));
+        }
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      }
+    }
+  }
+
+  void _handleReject(NotificationModel notif) async {
+    if (notif.referenceId == null) return;
+    final parts = notif.referenceId!.split('|');
+    if (parts.length != 3) return;
+    
+    try {
+      final financeService = FinanceService();
+      await financeService.rejectContribution(
+        roomId: parts[0],
+        fundId: parts[1],
+        contributionId: parts[2],
+        headId: widget.userId,
+      );
+      
+      // Đổi type để ẩn nút
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('notifications')
+          .doc(notif.id)
+          .update({'type': 'contribution_request_handled'});
+          
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã từ chối khoản đóng quỹ')));
+      }
+    } catch (e) {
+      if (e.toString().contains('bị người dùng huỷ')) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.userId)
+            .collection('notifications')
+            .doc(notif.id)
+            .update({'type': 'contribution_request_canceled'});
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yêu cầu này đã bị người dùng huỷ trước đó.')));
+        }
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      }
+    }
+  }
+
   IconData _getIconForType(String type) {
     switch (type) {
       case 'expense':
@@ -47,6 +152,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.warning_amber_rounded;
       case 'fund':
         return Icons.savings;
+      case 'contribution_request_canceled':
+        return Icons.cancel;
       default:
         return Icons.notifications;
     }
@@ -60,6 +167,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return AppColors.danger;
       case 'fund':
         return AppColors.secondary;
+      case 'contribution_request_canceled':
+        return Colors.grey;
       default:
         return Colors.grey;
     }
@@ -116,7 +225,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               final iconColor = _getColorForType(notif.type);
               
               return Material(
-                color: isRead ? Colors.transparent : Colors.blue.withValues(alpha: 0.05),
+                color: isRead ? Colors.transparent : Colors.blue.withOpacity(0.05),
                 child: InkWell(
                   onTap: () => _onNotificationTapped(notif),
                   child: Padding(
@@ -127,7 +236,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: iconColor.withValues(alpha: 0.1),
+                            color: iconColor.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -166,6 +275,78 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   fontSize: 12,
                                 ),
                               ),
+                              if (notif.type == 'contribution_request_canceled') ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Yêu cầu đã bị người dùng huỷ.',
+                                  style: TextStyle(
+                                    color: AppColors.danger.withOpacity(0.8),
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                              if (notif.type == 'contribution_request' && notif.referenceId != null) ...[
+                                const SizedBox(height: 8),
+                                FutureBuilder<DocumentSnapshot?>(
+                                  future: _checkContributionExists(notif.referenceId!),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                      return const Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        ),
+                                      );
+                                    }
+
+                                    final doc = snapshot.data;
+                                    if (doc == null || !doc.exists) {
+                                      // Yêu cầu không còn tồn tại -> cập nhật type của thông báo
+                                      FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(widget.userId)
+                                          .collection('notifications')
+                                          .doc(notif.id)
+                                          .update({'type': 'contribution_request_canceled'}).catchError((_) {});
+
+                                      return Text(
+                                        'Yêu cầu đã bị người dùng huỷ.',
+                                        style: TextStyle(
+                                          color: AppColors.danger.withOpacity(0.8),
+                                          fontStyle: FontStyle.italic,
+                                          fontSize: 13,
+                                        ),
+                                      );
+                                    }
+
+                                    return Row(
+                                      children: [
+                                        ElevatedButton(
+                                          onPressed: () => _handleApprove(notif),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.secondary,
+                                            visualDensity: VisualDensity.compact,
+                                            minimumSize: Size.zero,
+                                          ),
+                                          child: const Text('Xác nhận'),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        TextButton(
+                                          onPressed: () => _handleReject(notif),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: AppColors.danger,
+                                            visualDensity: VisualDensity.compact,
+                                          ),
+                                          child: const Text('Từ chối'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ],
                             ],
                           ),
                         ),

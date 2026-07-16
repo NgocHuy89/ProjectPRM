@@ -46,7 +46,6 @@ class AuthService {
         rethrow;
       }
 
-      await _auth.signOut();
       return user;
     } catch (e) {
       debugPrint('❌ Lỗi đăng ký: $e');
@@ -71,7 +70,9 @@ class AuthService {
   }
 
   // ── Đăng xuất ─────────────────────────────────
-  Future<void> logout() async => _auth.signOut();
+  Future<void> logout() async {
+    await _auth.signOut();
+  }
 
   // ── Quên mật khẩu ────────────────────────────
   Future<void> sendPasswordResetEmail(String email) async {

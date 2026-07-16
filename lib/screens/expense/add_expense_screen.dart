@@ -26,6 +26,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _titleCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _customCategoryCtrl = TextEditingController();
 
   String _selectedCategory = 'other';
   DateTime _expenseDate = DateTime.now();
@@ -68,7 +69,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   Future<void> _loadFunds() async {
     final funds = await _financeService.fundsStream(widget.roomId).first;
     if (mounted) {
-      setState(() => _funds = funds.where((f) => f.isActive).toList());
+      setState(() {
+        _funds = funds.where((f) => f.isActive).toList();
+        if (_funds.isNotEmpty && _selectedFundId == null) {
+          _selectedFundId = _funds.first.fundId;
+        }
+      });
     }
   }
 
@@ -77,6 +83,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     _titleCtrl.dispose();
     _amountCtrl.dispose();
     _noteCtrl.dispose();
+    _customCategoryCtrl.dispose();
     super.dispose();
   }
 
@@ -102,6 +109,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       );
       return;
     }
+    if (_selectedFundId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng chọn quỹ để trừ tiền'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
@@ -109,10 +126,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         _amountCtrl.text.trim().replaceAll(',', '').replaceAll('.', ''),
       );
 
+      final finalCategory = _selectedCategory == 'other'
+          ? (_customCategoryCtrl.text.trim().isEmpty
+              ? 'Khác'
+              : _customCategoryCtrl.text.trim())
+          : _selectedCategory;
+
       await _financeService.addExpense(
         roomId: widget.roomId,
         title: _titleCtrl.text.trim(),
-        category: _selectedCategory,
+        category: finalCategory,
         totalAmount: amount,
         paidBy: _paidByUserId!,
         paidByName: _paidByUserName!,
@@ -247,6 +270,20 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         );
                       }).toList(),
                     ),
+                    if (_selectedCategory == 'other') ...[
+                      const SizedBox(height: 12),
+                      AppTextField(
+                        label: 'Nhập tên danh mục *',
+                        hint: 'VD: Mua tivi, Mua quạt...',
+                        controller: _customCategoryCtrl,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Vui lòng nhập tên danh mục';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -337,7 +374,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      initialValue: _selectedFundId ?? '',
+                      initialValue: _selectedFundId,
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
@@ -347,21 +384,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         ),
                         prefixIcon: const Icon(Icons.savings_outlined),
                       ),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: '',
-                          child: Text('Không trừ quỹ'),
-                        ),
-                        ..._funds.map((fund) {
-                          return DropdownMenuItem<String>(
-                            value: fund.fundId,
-                            child: Text(
-                              '${fund.name} - ${formatVND(fund.currentBalance)}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }),
-                      ],
+                      items: _funds.map((fund) {
+                        return DropdownMenuItem<String>(
+                          value: fund.fundId,
+                          child: Text(
+                            '${fund.name} - ${formatVND(fund.currentBalance)}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Vui lòng chọn quỹ để trừ tiền';
+                        }
+                        return null;
+                      },
                       onChanged: (val) {
                         setState(() {
                           _selectedFundId =

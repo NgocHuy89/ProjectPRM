@@ -112,6 +112,40 @@ class RoomService {
       'currentRoomId': room.roomId,
     });
 
+    // Cập nhật các quỹ đang active trong phòng
+    final fundsQuery = await _db
+        .collection('rooms')
+        .doc(room.roomId)
+        .collection('funds')
+        .where('isActive', isEqualTo: true)
+        .get();
+
+    for (var doc in fundsQuery.docs) {
+      final fundData = doc.data();
+      final updates = <String, dynamic>{};
+      
+      // Thêm member vào memberStatus
+      final memberStatus = Map<String, dynamic>.from(fundData['memberStatus'] ?? {});
+      if (!memberStatus.containsKey(userId)) {
+        memberStatus[userId] = 'unpaid';
+        updates['memberStatus'] = memberStatus;
+      }
+
+      final fundMemberCount = memberStatus.length;
+
+      // Tính lại contributionPerMember nếu có targetAmount
+      if (fundData['targetAmount'] != null) {
+        final target = (fundData['targetAmount'] as num).toDouble();
+        if (target > 0 && fundMemberCount > 0) {
+          updates['contributionPerMember'] = target / fundMemberCount;
+        }
+      }
+
+      if (updates.isNotEmpty) {
+        batch.update(doc.reference, updates);
+      }
+    }
+
     await batch.commit();
     return room;
   }
@@ -159,6 +193,44 @@ class RoomService {
       'currentRoomId': FieldValue.delete(), // ✅ xoá field thay vì set null
       'role': 'member',
     });
+
+    // Cập nhật các quỹ đang active trong phòng (xoá khỏi danh sách và tính lại tiền)
+    final fundsQuery = await _db
+        .collection('rooms')
+        .doc(roomId)
+        .collection('funds')
+        .where('isActive', isEqualTo: true)
+        .get();
+
+    for (var doc in fundsQuery.docs) {
+      final fundData = doc.data();
+      final updates = <String, dynamic>{};
+      
+      // Xoá member khỏi memberStatus
+      final memberStatus = Map<String, dynamic>.from(fundData['memberStatus'] ?? {});
+      if (memberStatus.containsKey(userId)) {
+        memberStatus.remove(userId);
+        updates['memberStatus'] = memberStatus;
+      }
+
+      final fundMemberCount = memberStatus.length;
+
+      // Tính lại contributionPerMember nếu có targetAmount
+      if (fundData['targetAmount'] != null) {
+        final target = (fundData['targetAmount'] as num).toDouble();
+        if (target > 0) {
+          if (fundMemberCount > 0) {
+            updates['contributionPerMember'] = target / fundMemberCount;
+          } else {
+            updates['contributionPerMember'] = target; // Fallback if 0
+          }
+        }
+      }
+
+      if (updates.isNotEmpty) {
+        batch.update(doc.reference, updates);
+      }
+    }
 
     await batch.commit();
   }

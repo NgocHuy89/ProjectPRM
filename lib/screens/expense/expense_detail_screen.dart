@@ -29,7 +29,7 @@ class ExpenseDetailScreen extends StatelessWidget {
     final catIcon =
         AppConstants.categoryIcons[expense.category] ?? Icons.more_horiz;
     final catLabel =
-        AppConstants.categoryLabels[expense.category] ?? 'Khác';
+        AppConstants.categoryLabels[expense.category] ?? expense.category;
 
     return Scaffold(
       body: StreamBuilder<List<MemberModel>>(

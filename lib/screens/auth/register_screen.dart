@@ -43,11 +43,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tạo tài khoản thành công. Vui lòng đăng nhập.'),
+          content: Text('Tạo tài khoản thành công.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       debugPrint('Register error: $e');
       if (!mounted) return;

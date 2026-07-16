@@ -268,7 +268,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 totalExpense > 0 ? entry.value / totalExpense : 0.0;
             final color = AppConstants.categoryColor(entry.key);
             final label =
-                AppConstants.categoryLabels[entry.key] ?? 'Khác';
+                AppConstants.categoryLabels[entry.key] ?? entry.key;
             final icon =
                 AppConstants.categoryIcons[entry.key] ?? Icons.more_horiz;
 
@@ -330,7 +330,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget _buildTopCategoryCard(
       String topCat, Map<String, double> byCategory) {
     final color = AppConstants.categoryColor(topCat);
-    final label = AppConstants.categoryLabels[topCat] ?? 'Khác';
+    final label = AppConstants.categoryLabels[topCat] ?? topCat;
     final icon = AppConstants.categoryIcons[topCat] ?? Icons.more_horiz;
     final amount = byCategory[topCat] ?? 0;
 

@@ -1,75 +1,54 @@
 import 'package:flutter/material.dart';
+import '../../models/finance_models.dart';
 import '../../services/finance_service.dart';
-import '../../services/room_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 
-class CreateFundScreen extends StatefulWidget {
+class EditFundScreen extends StatefulWidget {
   final String roomId;
-  final String createdBy;
+  final FundModel fund;
 
-  const CreateFundScreen({
+  const EditFundScreen({
     super.key,
     required this.roomId,
-    required this.createdBy,
+    required this.fund,
   });
 
   @override
-  State<CreateFundScreen> createState() => _CreateFundScreenState();
+  State<EditFundScreen> createState() => _EditFundScreenState();
 }
 
-class _CreateFundScreenState extends State<CreateFundScreen> {
+class _EditFundScreenState extends State<EditFundScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  final _targetCtrl = TextEditingController();
-  final _perMemberCtrl = TextEditingController();
+  late TextEditingController _nameCtrl;
+  late TextEditingController _descCtrl;
+  late TextEditingController _targetCtrl;
+  late TextEditingController _perMemberCtrl;
   DateTime? _dueDate;
   bool _isLoading = false;
 
   final _financeService = FinanceService();
-  final _roomService = RoomService();
-
-  int _memberCount = 1;
 
   @override
   void initState() {
     super.initState();
-    _fetchMemberCount();
-    _targetCtrl.addListener(_onTargetChanged);
-  }
-
-  Future<void> _fetchMemberCount() async {
-    try {
-      final snap = await _roomService.membersStream(widget.roomId).first;
-      if (mounted) {
-        setState(() {
-          _memberCount = snap.length > 0 ? snap.length : 1;
-        });
-        _onTargetChanged();
-      }
-    } catch (e) {
-      debugPrint('Error fetching members: $e');
-    }
-  }
-
-  void _onTargetChanged() {
-    if (_targetCtrl.text.isEmpty) {
-      _perMemberCtrl.clear();
-      return;
-    }
-    final clean = _targetCtrl.text.trim().replaceAll(',', '').replaceAll('.', '');
-    final target = double.tryParse(clean);
-    if (target != null && target > 0) {
-      final perMember = target / _memberCount;
-      // Format number without decimals if it's an integer
-      _perMemberCtrl.text = perMember.toInt().toString();
-    }
+    _nameCtrl = TextEditingController(text: widget.fund.name);
+    _descCtrl = TextEditingController(text: widget.fund.description ?? '');
+    _targetCtrl = TextEditingController(
+      text: widget.fund.targetAmount != null
+          ? widget.fund.targetAmount!.toStringAsFixed(0)
+          : '',
+    );
+    _perMemberCtrl = TextEditingController(
+      text: widget.fund.contributionPerMember != null
+          ? widget.fund.contributionPerMember!.toStringAsFixed(0)
+          : '',
+    );
+    _dueDate = widget.fund.dueDate;
   }
 
   @override
   void dispose() {
-    _targetCtrl.removeListener(_onTargetChanged);
     _nameCtrl.dispose();
     _descCtrl.dispose();
     _targetCtrl.dispose();
@@ -80,25 +59,20 @@ class _CreateFundScreenState extends State<CreateFundScreen> {
   Future<void> _pickDueDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 7)),
-      firstDate: DateTime.now(),
+      initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 7)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null) setState(() => _dueDate = picked);
   }
 
-  Future<void> _createFund() async {
+  Future<void> _updateFund() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      // Lấy danh sách thành viên
-      final membersSnap = await _roomService
-          .membersStream(widget.roomId)
-          .first;
-      final memberIds = membersSnap.map((m) => m.userId).toList();
-
-      await _financeService.createFund(
+      await _financeService.updateFund(
         roomId: widget.roomId,
+        fundId: widget.fund.fundId,
         name: _nameCtrl.text.trim(),
         description: _descCtrl.text.trim().isEmpty
             ? null
@@ -114,19 +88,17 @@ class _CreateFundScreenState extends State<CreateFundScreen> {
                 _perMemberCtrl.text.trim().replaceAll(',', '').replaceAll('.', ''),
               ),
         dueDate: _dueDate,
-        createdBy: widget.createdBy,
-        memberIds: memberIds,
       );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tạo quỹ thành công!'),
+          content: Text('Cập nhật quỹ thành công!'),
           backgroundColor: AppColors.secondary,
           behavior: SnackBarBehavior.floating,
         ),
       );
-      Navigator.pop(context);
+      Navigator.pop(context); // Trở về màn hình chi tiết quỹ
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -146,7 +118,7 @@ class _CreateFundScreenState extends State<CreateFundScreen> {
     return LoadingOverlay(
       isLoading: _isLoading,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Tạo quỹ mới')),
+        appBar: AppBar(title: const Text('Chỉnh sửa quỹ')),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Form(
@@ -158,7 +130,7 @@ class _CreateFundScreenState extends State<CreateFundScreen> {
                 // Tên quỹ
                 AppTextField(
                   label: 'Tên quỹ *',
-                  hint: 'VD: Quỹ điện nước tháng 6, Quỹ sinh hoạt...',
+                  hint: 'VD: Quỹ điện nước tháng 6...',
                   controller: _nameCtrl,
                   prefixIcon: const Icon(Icons.savings_outlined),
                   validator: (v) {
@@ -271,9 +243,9 @@ class _CreateFundScreenState extends State<CreateFundScreen> {
                 const SizedBox(height: 32),
 
                 ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _createFund,
-                  icon: const Icon(Icons.savings),
-                  label: const Text('Tạo quỹ'),
+                  onPressed: _isLoading ? null : _updateFund,
+                  icon: const Icon(Icons.save),
+                  label: const Text('Lưu thay đổi'),
                 ),
               ],
             ),

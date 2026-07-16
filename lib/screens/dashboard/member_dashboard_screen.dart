@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../models/user_model.dart';
 import '../../models/room_model.dart';
@@ -7,6 +8,7 @@ import '../../services/room_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../expense/expense_list_screen.dart';
+import '../expense/personal_expense_screen.dart';
 import '../fund/fund_list_screen.dart';
 import '../profile/view_profile_screen.dart';
 import '../room/join_room_screen.dart';
@@ -77,6 +79,8 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         return _buildFundsTab(room);
       case 2:
         return _buildExpensesTab(room);
+      case 3:
+        return PersonalExpenseScreen(user: widget.user);
       default:
         return _buildHomeTab(room);
     }
@@ -222,6 +226,12 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         ),
       ),
       actions: [
+        if (room != null)
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white70),
+            tooltip: 'Chia sẻ mã phòng',
+            onPressed: () => _showJoinCode(room.joinCode),
+          ),
         IconButton(
           icon: const Icon(Icons.logout, color: Colors.white70),
           onPressed: () async => _authService.logout(),
@@ -565,7 +575,87 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
           selectedIcon: Icon(Icons.receipt_long),
           label: 'Chi tiêu',
         ),
+        NavigationDestination(
+          icon: Icon(Icons.account_balance_wallet_outlined),
+          selectedIcon: Icon(Icons.account_balance_wallet),
+          label: 'Cá nhân',
+        ),
       ],
+    );
+  }
+  void _showJoinCode(String code) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Mã tham gia phòng'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Chia sẻ mã này để thêm thành viên:'),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => _copyCode(code),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 32,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  code,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 8,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Nhấn vào mã để sao chép',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => _copyCode(code),
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('Sao chép'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _copyCode(String code) {
+    Clipboard.setData(ClipboardData(text: code));
+    if (Navigator.canPop(context)) Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text('Đã sao chép mã: $code'),
+          ],
+        ),
+        backgroundColor: AppColors.secondary,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 }

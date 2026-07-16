@@ -156,17 +156,19 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                         ...items.map(
                           (e) => _ExpenseTile(
                             expense: e,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ExpenseDetailScreen(
-                                  expense: e,
-                                  roomId: widget.roomId,
-                                  currentUserId: widget.user.uid,
-                                  isHead: widget.isHead,
-                                ),
-                              ),
-                            ),
+                            onTap: e.isPersonalNote
+                                ? null
+                                : () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ExpenseDetailScreen(
+                                          expense: e,
+                                          roomId: widget.roomId,
+                                          currentUserId: widget.user.uid,
+                                          isHead: widget.isHead,
+                                        ),
+                                      ),
+                                    ),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -201,16 +203,16 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
 class _ExpenseTile extends StatelessWidget {
   final ExpenseModel expense;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
-  const _ExpenseTile({required this.expense, required this.onTap});
+  const _ExpenseTile({required this.expense, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final catColor = AppConstants.categoryColor(expense.category);
     final catIcon = AppConstants.categoryIcons[expense.category] ??
         Icons.more_horiz;
-    final catLabel = AppConstants.categoryLabels[expense.category] ?? 'Khác';
+    final catLabel = AppConstants.categoryLabels[expense.category] ?? expense.category;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -264,13 +266,36 @@ class _ExpenseTile extends StatelessWidget {
                 ),
               ),
               // Amount
-              Text(
-                formatVND(expense.totalAmount),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: AppColors.danger,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    formatVND(expense.totalAmount),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: expense.isPersonalNote ? AppColors.danger : AppColors.secondary,
+                    ),
+                  ),
+                  if (expense.isPersonalNote && expense.isDebtPaid)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Đã trả',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.secondary,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),

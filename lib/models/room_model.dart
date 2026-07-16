@@ -68,6 +68,7 @@ class MemberModel {
   final DateTime joinedAt;
   final double totalContributed;
   final double totalOwed;
+  final double fundDebt;
   final bool isActive;
 
   MemberModel({
@@ -78,6 +79,7 @@ class MemberModel {
     required this.joinedAt,
     this.totalContributed = 0,
     this.totalOwed = 0,
+    this.fundDebt = 0,
     this.isActive = true,
   });
 
@@ -94,6 +96,7 @@ class MemberModel {
       joinedAt: (data['joinedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       totalContributed: (data['totalContributed'] as num?)?.toDouble() ?? 0,
       totalOwed: (data['totalOwed'] as num?)?.toDouble() ?? 0,
+      fundDebt: (data['fundDebt'] as num?)?.toDouble() ?? 0,
       isActive: data['isActive'] ?? true,
     );
   }
@@ -106,6 +109,7 @@ class MemberModel {
         'joinedAt': Timestamp.fromDate(joinedAt),
         'totalContributed': totalContributed,
         'totalOwed': totalOwed,
+        'fundDebt': fundDebt,
         'isActive': isActive,
       };
 }

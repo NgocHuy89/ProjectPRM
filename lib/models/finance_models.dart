@@ -139,6 +139,7 @@ class ExpenseModel {
   final DateTime createdAt;
   final String createdBy;
   final bool isPersonalNote;
+  final bool isDebtPaid;
   final Map<String, bool> settledStatus;
 
   ExpenseModel({
@@ -157,6 +158,7 @@ class ExpenseModel {
     required this.createdAt,
     required this.createdBy,
     this.isPersonalNote = false,
+    this.isDebtPaid = false,
     this.settledStatus = const {},
   });
 
@@ -184,6 +186,7 @@ class ExpenseModel {
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdBy: data['createdBy'] ?? '',
       isPersonalNote: data['isPersonalNote'] ?? false,
+      isDebtPaid: data['isDebtPaid'] ?? false,
       settledStatus:
           Map<String, bool>.from(data['settledStatus'] ?? {}),
     );
@@ -204,6 +207,7 @@ class ExpenseModel {
         'createdAt': Timestamp.fromDate(createdAt),
         'createdBy': createdBy,
         'isPersonalNote': isPersonalNote,
+        'isDebtPaid': isDebtPaid,
         'settledStatus': settledStatus,
       };
 }
@@ -249,4 +253,53 @@ class ReportModel {
           (data['generatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
+}
+
+// ─── Personal Expense ────────────────────────────────────
+class PersonalExpenseModel {
+  final String expenseId;
+  final String userId;
+  final String title;
+  final String category;
+  final double amount;
+  final String? note;
+  final DateTime expenseDate;
+  final DateTime createdAt;
+
+  PersonalExpenseModel({
+    required this.expenseId,
+    required this.userId,
+    required this.title,
+    required this.category,
+    required this.amount,
+    this.note,
+    required this.expenseDate,
+    required this.createdAt,
+  });
+
+  factory PersonalExpenseModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return PersonalExpenseModel(
+      expenseId: doc.id,
+      userId: data['userId'] ?? '',
+      title: data['title'] ?? '',
+      category: data['category'] ?? 'other',
+      amount: (data['amount'] as num?)?.toDouble() ?? 0,
+      note: data['note'],
+      expenseDate:
+          (data['expenseDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt:
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() => {
+        'userId': userId,
+        'title': title,
+        'category': category,
+        'amount': amount,
+        'note': note,
+        'expenseDate': Timestamp.fromDate(expenseDate),
+        'createdAt': Timestamp.fromDate(createdAt),
+      };
 }

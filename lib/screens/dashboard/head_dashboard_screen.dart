@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import '../../data/head_dev_mock_data.dart';
 import '../../models/finance_models.dart';
 import '../../models/user_model.dart';
 import '../../models/room_model.dart';
@@ -11,11 +10,13 @@ import '../../utils/app_theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../expense/add_expense_screen.dart';
 import '../expense/expense_list_screen.dart';
+import '../expense/personal_expense_screen.dart';
 import '../fund/create_fund_screen.dart';
 import '../fund/fund_list_screen.dart';
 import '../profile/view_profile_screen.dart';
 import '../../services/notification_service.dart';
 import 'notifications_screen.dart';
+import 'reports_screen.dart';
 
 class HeadDashboardScreen extends StatefulWidget {
   final UserModel user;
@@ -32,14 +33,10 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
   int _selectedIndex = 0;
   late Future<Map<String, dynamic>> _dashboardStatsFuture;
 
-  bool get _useDevData => widget.user.uid == HeadDevMockData.devUid;
-
   @override
   void initState() {
     super.initState();
-    _dashboardStatsFuture = _useDevData
-        ? Future.value(HeadDevMockData.stats)
-        : _getRoomStats();
+    _dashboardStatsFuture = _getRoomStats();
   }
 
   Future<Map<String, dynamic>> _getRoomStats() async {
@@ -56,14 +53,6 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_useDevData) {
-      return Scaffold(
-        backgroundColor: AppColors.surface,
-        body: _buildBody(HeadDevMockData.room),
-        bottomNavigationBar: _buildBottomNav(),
-      );
-    }
-
     final roomId = widget.user.currentRoomId;
     if (roomId == null || roomId.isEmpty) {
       return Scaffold(
@@ -118,6 +107,8 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
         return _buildFundsTab(room);
       case 3:
         return _buildReportsTab(room);
+      case 4:
+        return PersonalExpenseScreen(user: widget.user);
       default:
         return _buildHomeTab(room);
     }
@@ -197,17 +188,7 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
                 onAction: () => setState(() => _selectedIndex = 1),
               ),
               const SizedBox(height: 12),
-              if (_useDevData)
-                SizedBox(
-                  height: 80,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: HeadDevMockData.members.length,
-                    itemBuilder: (ctx, i) =>
-                        _memberChip(HeadDevMockData.members[i]),
-                  ),
-                )
-              else if (room != null)
+              if (room != null)
                 StreamBuilder<List<MemberModel>>(
                   key: Key('members_${room.roomId}'),
                   stream: _roomService.membersStream(room.roomId),
@@ -358,10 +339,14 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.white70),
-                    onPressed: () async => _authService.logout(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    onPressed: () async {
+                      try {
+                        await _authService.logout();
+                      } catch (e) {
+                        debugPrint('Logout error: $e');
+                      }
+                    },
                   ),
                 ],
               ),
@@ -418,7 +403,7 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
         icon: Icons.add_shopping_cart,
         color: AppColors.danger,
         onTap: () {
-          if (room == null || _useDevData) {
+          if (room == null) {
             _showComingSoon('Thêm chi tiêu');
             return;
           }
@@ -438,7 +423,7 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
         icon: Icons.savings,
         color: AppColors.secondary,
         onTap: () {
-          if (room == null || _useDevData) {
+          if (room == null) {
             _showComingSoon('Tạo quỹ');
             return;
           }
@@ -519,14 +504,7 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
             ),
         ],
       ),
-      body: _useDevData
-          ? ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: HeadDevMockData.members.length,
-              itemBuilder: (ctx, i) =>
-                  _memberCard(HeadDevMockData.members[i], HeadDevMockData.room),
-            )
-          : room == null
+      body: room == null
           ? const EmptyState(icon: Icons.group_off, title: 'Chưa có phòng')
           : StreamBuilder<List<MemberModel>>(
               stream: _roomService.membersStream(room.roomId),
@@ -692,7 +670,7 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
 
   // ── Funds Tab ─────────────────────────────────
   Widget _buildFundsTab(RoomModel? room) {
-    if (!_useDevData && room != null) {
+    if (room != null) {
       return DefaultTabController(
         length: 2,
         child: Scaffold(
@@ -731,42 +709,21 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
         title: const Text('Quản lý quỹ & Chi tiêu'),
         automaticallyImplyLeading: false,
         actions: [
-          if (_useDevData || room != null)
+          if (room != null)
             IconButton(
               icon: const Icon(Icons.add, color: Colors.white),
               onPressed: () => _showComingSoon('Tạo quỹ mới'),
             ),
         ],
       ),
-      body: _useDevData
-          ? ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                const SectionHeader(title: 'Quỹ đang hoạt động'),
-                const SizedBox(height: 12),
-                ...HeadDevMockData.funds.map(_buildMockFundCard),
-                const SizedBox(height: 24),
-                const SectionHeader(title: 'Chi tiêu gần đây'),
-                const SizedBox(height: 12),
-                ...HeadDevMockData.expenses.map(_buildMockExpenseTile),
-                const SizedBox(height: 80),
-              ],
-            )
-          : const Center(
-              child: EmptyState(
-                icon: Icons.savings,
-                title: 'Quản lý quỹ',
-                subtitle: 'Tạo phòng trước khi quản lý quỹ và chi tiêu.',
-              ),
-            ),
-      floatingActionButton: _useDevData
-          ? FloatingActionButton.extended(
-              onPressed: () => _showComingSoon('Thêm chi tiêu'),
-              icon: const Icon(Icons.add),
-              label: const Text('Thêm chi tiêu'),
-              backgroundColor: AppColors.primary,
-            )
-          : null,
+      body: const Center(
+        child: EmptyState(
+          icon: Icons.savings,
+          title: 'Quản lý quỹ',
+          subtitle: 'Tạo phòng trước khi quản lý quỹ và chi tiêu.',
+        ),
+      ),
+      floatingActionButton: null,
     );
   }
 
@@ -916,7 +873,8 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
   }
 
   Widget _buildMockExpenseTile(ExpenseModel expense) {
-    final catLabel = AppConstants.categoryLabels[expense.category] ?? 'Khác';
+    final catLabel =
+        AppConstants.categoryLabels[expense.category] ?? expense.category;
     final catIcon =
         AppConstants.categoryIcons[expense.category] ?? Icons.more_horiz;
     final catColor = AppConstants.categoryColor(expense.category);
@@ -944,13 +902,36 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
           style: const TextStyle(fontSize: 11),
           overflow: TextOverflow.ellipsis, // ✅
         ),
-        trailing: Text(
-          formatVND(expense.totalAmount),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.danger,
-            fontSize: 14,
-          ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              formatVND(expense.totalAmount),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: expense.isPersonalNote ? AppColors.danger : AppColors.secondary,
+                fontSize: 14,
+              ),
+            ),
+            if (expense.isPersonalNote && expense.isDebtPaid)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Đã trả',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.secondary,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -958,339 +939,20 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
 
   // ── Reports Tab ───────────────────────────────
   Widget _buildReportsTab(RoomModel? room) {
-    if (!_useDevData) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Báo cáo & Thống kê'),
-          automaticallyImplyLeading: false,
-        ),
-        body: const Center(
-          child: EmptyState(
-            icon: Icons.bar_chart,
-            title: 'Báo cáo thống kê',
-            subtitle: 'Màn hình này sẽ được\ntriển khai ở nhóm Reports',
-          ),
-        ),
-      );
+    if (room != null) {
+      return ReportsScreen(roomId: room.roomId, user: widget.user);
     }
-
-    final data = HeadDevMockData.monthlyReport;
-    final totalExpense = data['totalExpense'] as double;
-    final totalIncome = data['totalIncome'] as double;
-    final balance = data['balance'] as double;
-    final byCategory = Map<String, double>.from(
-      data['byCategory'] as Map<String, double>,
-    );
-    final topCategory = data['topCategory'] as String;
-    final expenseCount = data['expenseCount'] as int;
-    final now = DateTime.now();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Báo cáo & Thống kê'),
         automaticallyImplyLeading: false,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  DateFormat('MMMM yyyy', 'vi').format(
-                    DateTime(now.year, now.month),
-                  ),
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildReportSummaryRow(
-            totalExpense: totalExpense,
-            totalIncome: totalIncome,
-            balance: balance,
-            expenseCount: expenseCount,
-          ),
-          const SizedBox(height: 20),
-          const SectionHeader(title: 'Chi tiêu theo danh mục'),
-          const SizedBox(height: 12),
-          _buildCategoryChart(byCategory, totalExpense),
-          const SizedBox(height: 20),
-          _buildTopCategoryCard(topCategory, byCategory),
-          const SizedBox(height: 20),
-          const SectionHeader(title: 'Tổng hợp thành viên'),
-          const SizedBox(height: 12),
-          ...HeadDevMockData.members.map(_buildMemberReportCard),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReportSummaryRow({
-    required double totalExpense,
-    required double totalIncome,
-    required double balance,
-    required int expenseCount,
-  }) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _reportSummaryCard(
-                label: 'Tổng chi',
-                value: formatVND(totalExpense),
-                icon: Icons.trending_down,
-                color: AppColors.danger,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _reportSummaryCard(
-                label: 'Tổng đóng quỹ',
-                value: formatVND(totalIncome),
-                icon: Icons.trending_up,
-                color: AppColors.secondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _reportSummaryCard(
-                label: 'Số dư (quỹ-chi)',
-                value: formatVND(balance),
-                icon: Icons.account_balance,
-                color: balance >= 0 ? AppColors.secondary : AppColors.danger,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _reportSummaryCard(
-                label: 'Số khoản chi',
-                value: '$expenseCount khoản',
-                icon: Icons.receipt_long,
-                color: AppColors.primary,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _reportSummaryCard({
-    required String label,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-            overflow: TextOverflow.ellipsis, // ✅
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryChart(Map<String, double> byCategory, double total) {
-    final sorted = byCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: sorted.map((entry) {
-            final pct = total > 0 ? entry.value / total : 0.0;
-            final color = AppConstants.categoryColor(entry.key);
-            final label = AppConstants.categoryLabels[entry.key] ?? 'Khác';
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded( // ✅
-                        child: Text(
-                          label,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        formatVND(entry.value),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: pct,
-                      minHeight: 8,
-                      backgroundColor: AppColors.divider,
-                      color: color,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTopCategoryCard(String topCat, Map<String, double> byCategory) {
-    final label = AppConstants.categoryLabels[topCat] ?? 'Khác';
-    final amount = byCategory[topCat] ?? 0;
-    final color = AppConstants.categoryColor(topCat);
-    final icon = AppConstants.categoryIcons[topCat] ?? Icons.more_horiz;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: color),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Danh mục chi nhiều nhất',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis, // ✅
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              formatVND(amount),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMemberReportCard(MemberModel member) {
-    final balance = member.balance;
-    final isPositive = balance >= 0;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(12),
-        leading: UserAvatar(
-          imageUrl: member.avatarUrl,
-          name: member.fullName,
-          radius: 22,
-        ),
-        title: Text(
-          member.fullName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-          overflow: TextOverflow.ellipsis, // ✅
-        ),
-        subtitle: Text(
-          'Đã đóng: ${formatVND(member.totalContributed)} · Còn nợ: ${formatVND(member.totalOwed)}',
-          style: const TextStyle(fontSize: 11),
-          overflow: TextOverflow.ellipsis, // ✅
-        ),
-        trailing: Text(
-          isPositive ? '+${formatVND(balance)}' : formatVND(balance),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isPositive ? AppColors.secondary : AppColors.danger,
-          ),
+      body: const Center(
+        child: EmptyState(
+          icon: Icons.bar_chart,
+          title: 'Chưa có phòng',
+          subtitle: 'Tạo hoặc tham gia phòng để xem báo cáo thống kê.',
         ),
       ),
     );
@@ -1323,6 +985,11 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
           icon: Icon(Icons.bar_chart_outlined),
           selectedIcon: Icon(Icons.bar_chart),
           label: 'Báo cáo',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.account_balance_wallet_outlined),
+          selectedIcon: Icon(Icons.account_balance_wallet),
+          label: 'Cá nhân',
         ),
       ],
     );
@@ -1424,10 +1091,7 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
       ),
     );
     if (confirm == true) {
-      if (_useDevData) {
-        _showComingSoon('Xoá thành viên');
-        return;
-      }
+
       try {
         await _roomService.removeMember(
           roomId: room.roomId,
