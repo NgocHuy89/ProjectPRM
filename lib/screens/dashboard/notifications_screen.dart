@@ -32,7 +32,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _notificationService.markAllAsRead(widget.userId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('?? ??nh d?u t?t c? l? ?? ??c')),
+        const SnackBar(content: Text('Đã đánh dấu tất cả là đã đọc')),
       );
     }
   }
@@ -64,7 +64,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (!mounted) return;
       if (!userDoc.exists || !fundDoc.exists) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kh?ng t?m th?y qu? c?n ??ng.')),
+          const SnackBar(content: Text('Không tìm thấy quỹ cần đóng.')),
         );
         return;
       }
@@ -85,7 +85,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kh?ng th? m? qu?: $e')),
+        SnackBar(content: Text('Không thể mở quỹ: $e')),
       );
     }
   }
@@ -145,11 +145,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('?? x?c nh?n kho?n ??ng qu?')),
+          const SnackBar(content: Text('Đã xác nhận khoản đóng quỹ')),
         );
       }
     } catch (e) {
-      if (e.toString().contains('b? ng??i d?ng hu?')) {
+      if (e.toString().contains('bị người dùng huỷ')) {
         await _markContributionHandled(
           notif,
           newType: 'contribution_request_canceled',
@@ -157,14 +157,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Y?u c?u n?y ?? b? ng??i d?ng hu? tr??c ??.'),
+              content: Text('Yêu cầu này đã bị người dùng huỷ trước đó.'),
             ),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('L?i: $e')),
+            SnackBar(content: Text('Lỗi: $e')),
           );
         }
       }
@@ -192,11 +192,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('?? t? ch?i kho?n ??ng qu?')),
+          const SnackBar(content: Text('Đã từ chối khoản đóng quỹ')),
         );
       }
     } catch (e) {
-      if (e.toString().contains('b? ng??i d?ng hu?')) {
+      if (e.toString().contains('bị người dùng huỷ')) {
         await _markContributionHandled(
           notif,
           newType: 'contribution_request_canceled',
@@ -204,14 +204,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Y?u c?u n?y ?? b? ng??i d?ng hu? tr??c ??.'),
+              content: Text('Yêu cầu này đã bị người dùng huỷ trước đó.'),
             ),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('L?i: $e')),
+            SnackBar(content: Text('Lỗi: $e')),
           );
         }
       }
@@ -263,12 +263,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget? _buildContributionStatus(String type) {
     switch (type) {
       case 'contribution_request_approved':
-        return _statusChip('?? x?c nh?n', AppColors.secondary);
+        return _statusChip('Đã xác nhận', AppColors.secondary);
       case 'contribution_request_rejected':
-        return _statusChip('?? t? ch?i', AppColors.danger);
+        return _statusChip('Đã từ chối', AppColors.danger);
       case 'contribution_request_canceled':
         return _statusChip(
-          'Y?u c?u ?? b? ng??i d?ng hu?.',
+          'Yêu cầu đã bị người dùng huỷ.',
           AppColors.danger,
           italic: true,
         );
@@ -304,11 +304,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Th?ng b?o'),
+        title: const Text('Thông báo'),
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all),
-            tooltip: '??nh d?u t?t c? ?? ??c',
+            tooltip: 'Đánh dấu tất cả đã đọc',
             onPressed: _markAllAsRead,
           ),
         ],
@@ -334,7 +334,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'B?n ch?a c? th?ng b?o n?o',
+                    'Bạn chưa có thông báo nào',
                     style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                 ],
@@ -434,7 +434,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                           .catchError((_) {});
 
                                       return _statusChip(
-                                        'Y?u c?u ?? b? ng??i d?ng hu?.',
+                                        'Yêu cầu đã bị người dùng huỷ.',
                                         AppColors.danger,
                                         italic: true,
                                       );
@@ -449,7 +449,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             visualDensity: VisualDensity.compact,
                                             minimumSize: Size.zero,
                                           ),
-                                          child: const Text('X?c nh?n'),
+                                          child: const Text('Xác nhận'),
                                         ),
                                         const SizedBox(width: 8),
                                         TextButton(
@@ -458,7 +458,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             foregroundColor: AppColors.danger,
                                             visualDensity: VisualDensity.compact,
                                           ),
-                                          child: const Text('T? ch?i'),
+                                          child: const Text('Từ chối'),
                                         ),
                                       ],
                                     );

@@ -630,16 +630,7 @@ class _HeadDashboardScreenState extends State<HeadDashboardScreen> {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text('Chỉnh sửa', style: TextStyle(color: Colors.blue)),
-                      ],
-                    ),
-                  ),
+
                   const PopupMenuItem(
                     value: 'remove',
                     child: Row(

@@ -142,33 +142,7 @@ class ExpenseDetailScreen extends StatelessWidget {
                                 value: expense.note!,
                               ),
                             ],
-                            if (expense.isPersonalNote) ...[
-                              const Divider(height: 1),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.info_outline,
-                                      size: 16,
-                                      color: AppColors.warning,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Expanded(
-                                      child: Text(
-                                        'Khoản chi chung dùng vào việc cá nhân',
-                                        style: TextStyle(
-                                          color: AppColors.warning,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+
                           ],
                         ),
                       ),

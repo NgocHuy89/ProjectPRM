@@ -221,113 +221,159 @@ class FundDetailScreen extends StatelessWidget {
                         final hasPending = myContributions.any((c) => c.status == 'pending');
 
                         if (isPaid) {
-                          return Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppColors.secondary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.secondary.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.check_circle, color: AppColors.secondary),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Bạn đã đóng tiền quỹ này',
-                                  style: TextStyle(
-                                    color: AppColors.secondary,
-                                    fontWeight: FontWeight.bold,
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.secondary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.secondary.withValues(alpha: 0.3),
                                   ),
                                 ),
-                              ],
-                            ),
-                          );
-                        } else if (hasPending) {
-                          final pendingContrib = myContributions.firstWhere((c) => c.status == 'pending');
-                          return InkWell(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: const Text('Huỷ yêu cầu đóng tiền'),
-                                  content: const Text('Bạn muốn huỷ yêu cầu đóng tiền đang chờ duyệt này?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Không', style: TextStyle(color: Colors.grey)),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () async {
-                                        Navigator.pop(ctx);
-                                        try {
-                                          await financeService.deletePendingContribution(
-                                            roomId: roomId,
-                                            fundId: currentFund.fundId,
-                                            contributionId: pendingContrib.contributionId,
-                                          );
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Đã huỷ yêu cầu')),
-                                            );
-                                          }
-                                        } catch (e) {
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text('Lỗi: $e')),
-                                            );
-                                          }
-                                        }
-                                      },
-                                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
-                                      child: const Text('Huỷ yêu cầu'),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.check_circle, color: AppColors.secondary),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Bạn đã đóng tiền quỹ này',
+                                      style: TextStyle(
+                                        color: AppColors.secondary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ],
                                 ),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.orange.withValues(alpha: 0.3),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                onPressed: () => _showPayForOthersDialog(context, currentFund, financeService, roomService, isPaid, hasPending),
+                                icon: const Icon(Icons.people),
+                                label: const Text('Đóng quỹ hộ người khác'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
                                 ),
                               ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.access_time, color: Colors.orange),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Đang chờ duyệt (Bấm để huỷ)',
-                                    style: TextStyle(
-                                      color: Colors.orange,
-                                      fontWeight: FontWeight.bold,
+                            ],
+                          );
+                        } else if (hasPending) {
+                          final pendingContrib = myContributions.firstWhere((c) => c.status == 'pending');
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Huỷ yêu cầu đóng tiền'),
+                                      content: const Text('Bạn muốn huỷ yêu cầu đóng tiền đang chờ duyệt này?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text('Không', style: TextStyle(color: Colors.grey)),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            Navigator.pop(ctx);
+                                            try {
+                                              await financeService.deletePendingContribution(
+                                                roomId: roomId,
+                                                fundId: currentFund.fundId,
+                                                contributionId: pendingContrib.contributionId,
+                                              );
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Đã huỷ yêu cầu')),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text('Lỗi: $e')),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+                                          child: const Text('Huỷ yêu cầu'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.orange.withValues(alpha: 0.3),
                                     ),
                                   ),
-                                ],
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.access_time, color: Colors.orange),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Đang chờ duyệt (Bấm để huỷ)',
+                                        style: TextStyle(
+                                          color: Colors.orange,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                onPressed: () => _showPayForOthersDialog(context, currentFund, financeService, roomService, isPaid, hasPending),
+                                icon: const Icon(Icons.people),
+                                label: const Text('Đóng quỹ hộ người khác'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                              ),
+                            ],
                           );
                         } else {
-                          return ElevatedButton.icon(
-                            onPressed: () {
-                              _showContributeDialog(context, currentFund, financeService);
-                            },
-                            icon: const Icon(Icons.payment),
-                            label: Text(
-                              currentFund.contributionPerMember != null
-                                  ? 'Đóng ${formatVND(currentFund.contributionPerMember!)}'
-                                  : 'Đóng tiền vào quỹ',
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.secondary,
-                            ),
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  _showContributeDialog(context, currentFund, financeService);
+                                },
+                                icon: const Icon(Icons.payment),
+                                label: Text(
+                                  currentFund.contributionPerMember != null
+                                      ? 'Đóng ${formatVND(currentFund.contributionPerMember!)}'
+                                      : 'Đóng tiền vào quỹ',
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.secondary,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                onPressed: () => _showPayForOthersDialog(context, currentFund, financeService, roomService, isPaid, hasPending),
+                                icon: const Icon(Icons.people, color: AppColors.primary),
+                                label: const Text('Đóng quỹ hộ người khác', style: TextStyle(color: AppColors.primary)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  side: const BorderSide(color: AppColors.primary),
+                                ),
+                              ),
+                            ],
                           );
                         }
                       },
@@ -539,6 +585,37 @@ class FundDetailScreen extends StatelessWidget {
         ),
       );
     }
+  }
+
+  void _showPayForOthersDialog(
+    BuildContext context,
+    FundModel currentFund,
+    FinanceService financeService,
+    RoomService roomService,
+    bool isCurrentUserPaid,
+    bool hasPending,
+  ) {
+    if (currentFund.contributionPerMember == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tính năng này chỉ hỗ trợ quỹ có mức đóng cố định')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _PayForOthersSheet(
+        roomId: roomId,
+        currentFund: currentFund,
+        financeService: financeService,
+        roomService: roomService,
+        currentUser: user,
+        isCurrentUserPaid: isCurrentUserPaid,
+        hasPending: hasPending,
+      ),
+    );
   }
 }
 
@@ -778,5 +855,196 @@ class _MemberStatusTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _PayForOthersSheet extends StatefulWidget {
+  final String roomId;
+  final FundModel currentFund;
+  final FinanceService financeService;
+  final RoomService roomService;
+  final UserModel currentUser;
+  final bool isCurrentUserPaid;
+  final bool hasPending;
+
+  const _PayForOthersSheet({
+    required this.roomId,
+    required this.currentFund,
+    required this.financeService,
+    required this.roomService,
+    required this.currentUser,
+    required this.isCurrentUserPaid,
+    required this.hasPending,
+  });
+
+  @override
+  State<_PayForOthersSheet> createState() => _PayForOthersSheetState();
+}
+
+class _PayForOthersSheetState extends State<_PayForOthersSheet> {
+  final Set<String> _selectedMemberIds = {};
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        top: 24,
+        left: 24,
+        right: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Đóng quỹ hộ người khác',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Chọn thành viên chưa đóng quỹ để đóng hộ (không bao gồm bạn):',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: StreamBuilder<List<MemberModel>>(
+              stream: widget.roomService.membersStream(widget.roomId),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final members = snap.data ?? [];
+                final unpaidOthers = members.where((m) {
+                  if (m.userId == widget.currentUser.uid) return false; 
+                  final status = widget.currentFund.memberStatus[m.userId] ?? 'unpaid';
+                  return status != 'paid';
+                }).toList();
+
+                if (unpaidOthers.isEmpty) {
+                  return const Center(
+                    child: Text('Tất cả mọi người đều đã đóng quỹ này.'),
+                  );
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: unpaidOthers.length,
+                  itemBuilder: (ctx, index) {
+                    final m = unpaidOthers[index];
+                    return CheckboxListTile(
+                      value: _selectedMemberIds.contains(m.userId),
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedMemberIds.add(m.userId);
+                          } else {
+                            _selectedMemberIds.remove(m.userId);
+                          }
+                        });
+                      },
+                      title: Text(m.fullName),
+                      subtitle: Text(m.role == 'head' ? 'Trưởng phòng' : 'Thành viên'),
+                      activeColor: AppColors.primary,
+                      contentPadding: EdgeInsets.zero,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: (_selectedMemberIds.isEmpty || _isLoading) ? null : _submitPayment,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: _isLoading 
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('Yêu cầu đóng tiền', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitPayment() async {
+    setState(() => _isLoading = true);
+    try {
+      final amount = widget.currentFund.contributionPerMember!;
+      
+      final membersList = await widget.roomService.membersStream(widget.roomId).first;
+      
+      int successCount = 0;
+      
+      // 1. Submit cho những người được chọn
+      for (final uid in _selectedMemberIds) {
+        final m = membersList.firstWhere((e) => e.userId == uid);
+        await widget.financeService.addContribution(
+          roomId: widget.roomId,
+          fundId: widget.currentFund.fundId,
+          userId: m.userId,
+          userName: m.fullName,
+          amount: amount,
+          note: 'Đóng hộ bởi ${widget.currentUser.fullName}',
+        );
+        successCount++;
+      }
+      
+      // 2. Tự động submit cho bản thân nếu chưa đóng và chưa có pending
+      if (!widget.isCurrentUserPaid && !widget.hasPending) {
+        await widget.financeService.addContribution(
+          roomId: widget.roomId,
+          fundId: widget.currentFund.fundId,
+          userId: widget.currentUser.uid,
+          userName: widget.currentUser.fullName,
+          amount: amount,
+        );
+        successCount++;
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã gửi $successCount yêu cầu đóng tiền'),
+            backgroundColor: AppColors.secondary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
   }
 }
